@@ -1,0 +1,2291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PetContext 任务</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f0f5;
+            height: 100vh;
+            overflow: hidden;
+            color: #333;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ===== 顶部输入区 ===== */
+        .input-area {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .task-input {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.95);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .task-input:focus {
+            background: white;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
+        }
+
+        .task-input::placeholder { color: #aaa; }
+
+        .submit-btn {
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+
+        .submit-btn:hover { background: rgba(255,255,255,0.35); }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .settings-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-btn:hover { background: rgba(255,255,255,0.35); }
+
+        /* ===== 视角切换 ===== */
+        .view-tabs {
+            display: flex;
+            background: white;
+            border-bottom: 1px solid #e8e8f0;
+            flex-shrink: 0;
+            padding: 0 16px;
+        }
+
+        .view-tab {
+            flex: 1;
+            padding: 10px 0;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: #999;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+
+        .view-tab:hover { color: #667eea; }
+
+        .view-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .view-date {
+            font-size: 11px;
+            color: #bbb;
+            text-align: center;
+            padding: 6px 16px 2px;
+            background: white;
+            flex-shrink: 0;
+        }
+
+        /* ===== 任务列表区 ===== */
+        .task-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 16px 16px;
+        }
+
+        /* 任务组 */
+        .task-group {
+            margin-bottom: 14px;
+        }
+
+        .group-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0 6px;
+            border-bottom: 1px solid #e8e8f0;
+            margin-bottom: 6px;
+        }
+
+        .group-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #444;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .group-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .group-xp {
+            font-size: 12px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .group-date {
+            font-size: 11px;
+            color: #bbb;
+        }
+
+        .group-delete {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: none;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .group-delete:hover { color: #ff6b6b; background: #fff0f0; }
+
+        /* 能量标签 */
+        .energy-tag {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .energy-low { background: #e8f5e9; color: #4caf50; }
+        .energy-mid { background: #fff3e0; color: #ff9800; }
+        .energy-high { background: #fce4ec; color: #e91e63; }
+
+        /* 奖励和护盾卡片 */
+        .info-card {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 6px;
+        }
+
+        .reward-card {
+            background: #fffde7;
+            color: #f57f17;
+            border-left: 3px solid #ffd54f;
+        }
+
+        .shield-card {
+            background: #e8eaf6;
+            color: #3949ab;
+            border-left: 3px solid #7986cb;
+        }
+
+        .info-card-label {
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+        /* 步骤动作提示 */
+        .task-action {
+            font-size: 11px;
+            color: #8e99a4;
+            font-style: italic;
+            margin-top: 1px;
+        }
+
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .task-item:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+
+        .task-item.done { background: #f8f8fc; opacity: 0.7; }
+        .task-item.done .task-name { text-decoration: line-through; color: #aaa; }
+
+        .task-check {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            border: 2px solid #d0d0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            font-size: 11px;
+            color: transparent;
+        }
+
+        .task-item.done .task-check {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+
+        .task-info { flex: 1; min-width: 0; }
+
+        .task-name {
+            font-size: 13px;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 10px;
+            margin-top: 1px;
+            font-size: 11px;
+            color: #999;
+        }
+
+        /* 进度条 */
+        .progress-bar {
+            margin: 4px 0;
+            height: 4px;
+            background: #e8e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #bbb;
+            padding: 50px 40px;
+        }
+
+        .empty-state .empty-icon {
+            font-size: 42px;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* ===== 设置面板 ===== */
+        .settings-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .settings-overlay.active { display: flex; }
+
+        .settings-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            width: 340px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .settings-panel h3 {
+            margin-bottom: 16px;
+            color: #333;
+            font-size: 16px;
+        }
+
+        .form-group { margin-bottom: 12px; }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e0e0e8;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus { border-color: #667eea; }
+
+        .settings-actions { display: flex; gap: 8px; margin-top: 16px; }
+
+        .btn-primary {
+            flex: 1; padding: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white; border: none; border-radius: 8px;
+            cursor: pointer; font-size: 14px; font-weight: 500;
+        }
+
+        .btn-secondary {
+            flex: 1; padding: 10px;
+            background: #f0f0f5; color: #666; border: none;
+            border-radius: 8px; cursor: pointer; font-size: 14px;
+        }
+
+        /* 滚动条 */
+        .task-area::-webkit-scrollbar { width: 5px; }
+        .task-area::-webkit-scrollbar-track { background: transparent; }
+        .task-area::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+
+        /* ===== VLM 截屏分析 ===== */
+        .capture-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .capture-btn:hover { background: rgba(255,255,255,0.35); }
+        .capture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .vlm-result-card {
+            margin: 8px 0;
+            padding: 12px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .vlm-result-card .vlm-label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 12px;
+            margin-bottom: 2px;
+        }
+        .vlm-activity { color: #333; margin-bottom: 8px; }
+        .vlm-summary { color: #555; margin-bottom: 8px; }
+        .vlm-suggestion {
+            padding: 6px 10px;
+            background: #f0f4ff;
+            border-radius: 6px;
+            color: #4a6cf7;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        .vlm-mood-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .vlm-mood-work { background: #e3f2fd; color: #1976d2; }
+        .vlm-mood-study { background: #e8f5e9; color: #388e3c; }
+        .vlm-mood-fun { background: #fff3e0; color: #f57c00; }
+        .vlm-mood-rest { background: #fce4ec; color: #c62828; }
+        .vlm-mood-unknown { background: #f5f5f5; color: #999; }
+
+        .vlm-todos { margin-bottom: 8px; }
+        .vlm-todo-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 0;
+            font-size: 12px;
+            color: #555;
+        }
+        .vlm-todo-item::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #667eea;
+            flex-shrink: 0;
+        }
+        .vlm-add-task-btn {
+            display: inline-block;
+            margin-left: 4px;
+            padding: 1px 6px;
+            font-size: 10px;
+            color: #667eea;
+            border: 1px solid #667eea;
+            border-radius: 4px;
+            background: none;
+            cursor: pointer;
+        }
+        .vlm-add-task-btn:hover { background: #667eea; color: white; }
+
+        .vlm-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #444;
+            border-bottom: 1px solid #e8e8f0;
+            margin-bottom: 6px;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 22px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: #ccc;
+            border-radius: 11px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            left: 3px;
+            top: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: #667eea; }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+        .section-divider {
+            border: none;
+            border-top: 1px solid #e8e8f0;
+            margin: 16px 0 12px;
+        }
+        .section-title {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        /* ===== 截止日期标签 ===== */
+        .deadline-tag {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .deadline-urgent { background: #fce4ec; color: #c62828; }
+        .deadline-warn { background: #fff3e0; color: #e65100; }
+        .deadline-early { background: #fff8e1; color: #f9a825; }
+        .deadline-safe { background: #e8f5e9; color: #2e7d32; }
+        .deadline-passed { background: #efebe9; color: #bf360c; text-decoration: line-through; }
+
+        /* VLM 来源标记 */
+        .source-tag {
+            font-size: 9px;
+            padding: 0px 4px;
+            border-radius: 3px;
+            background: #ede7f6;
+            color: #7c4dff;
+            font-weight: 500;
+        }
+
+        /* ===== 二级子 Tab ===== */
+        .sub-tabs {
+            display: flex;
+            background: #fafafe;
+            border-bottom: 1px solid #e8e8f0;
+            flex-shrink: 0;
+            padding: 0 16px;
+        }
+        .sub-tabs.hidden { display: none; }
+        .sub-tab {
+            padding: 7px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #aaa;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+        }
+        .sub-tab:hover { color: #667eea; }
+        .sub-tab.active { color: #667eea; border-bottom-color: #667eea; }
+
+        /* ===== 报告视图 ===== */
+        .report-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            margin-bottom: 8px;
+        }
+        .report-toolbar input[type="date"],
+        .report-toolbar input[type="month"] {
+            padding: 6px 10px;
+            border: 1px solid #e0e0e8;
+            border-radius: 6px;
+            font-size: 12px;
+            outline: none;
+            flex: 1;
+        }
+        .report-toolbar input:focus { border-color: #667eea; }
+        .report-gen-btn {
+            padding: 7px 14px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .report-gen-btn:hover { opacity: 0.9; }
+        .report-gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .report-card {
+            margin-bottom: 12px;
+            padding: 14px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .report-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #444;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .report-card-time {
+            font-size: 10px;
+            color: #bbb;
+            font-weight: 400;
+        }
+        .report-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .report-stat {
+            padding: 6px 10px;
+            background: #f8f8fc;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+        .report-stat b {
+            color: #667eea;
+            font-size: 14px;
+        }
+        .report-mood-bar {
+            display: flex;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+            background: #f0f0f5;
+        }
+        .report-mood-seg { height: 100%; transition: width 0.3s; }
+        .mood-seg-work { background: #42a5f5; }
+        .mood-seg-study { background: #66bb6a; }
+        .mood-seg-fun { background: #ffa726; }
+        .mood-seg-rest { background: #ef5350; }
+
+        .report-mood-legend {
+            display: flex;
+            gap: 10px;
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+        .report-mood-legend span::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            margin-right: 3px;
+            vertical-align: middle;
+        }
+        .legend-work::before { background: #42a5f5; }
+        .legend-study::before { background: #66bb6a; }
+        .legend-fun::before { background: #ffa726; }
+        .legend-rest::before { background: #ef5350; }
+
+        .report-narrative {
+            padding: 10px 12px;
+            background: #faf8ff;
+            border-left: 3px solid #667eea;
+            border-radius: 0 6px 6px 0;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        .report-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+        .report-export-btn {
+            padding: 5px 12px;
+            font-size: 11px;
+            border-radius: 5px;
+            border: 1px solid #d0d0e0;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .report-export-btn:hover { border-color: #667eea; color: #667eea; }
+        .report-delete-btn {
+            padding: 5px 12px;
+            font-size: 11px;
+            border-radius: 5px;
+            border: 1px solid #fcc;
+            background: white;
+            color: #ff6b6b;
+            cursor: pointer;
+        }
+        .report-delete-btn:hover { background: #fff0f0; }
+    </style>
+</head>
+<body>
+    <div class="panel">
+        <!-- 顶部输入 -->
+        <div class="input-area">
+            <input type="text" class="task-input" id="taskInput"
+                   placeholder="告诉猫猫你要做什么..."
+                   onkeydown="handleKeydown(event)" />
+            <button class="submit-btn" id="submitBtn" onclick="submitTask()">拆解</button>
+            <button class="capture-btn" id="captureBtn" onclick="manualCapture()" title="截屏分析">&#128247;</button>
+            <button class="settings-btn" onclick="openSettings()" title="设置">&#9881;</button>
+        </div>
+
+        <!-- 一级 Tab -->
+        <div class="view-tabs">
+            <button class="view-tab active" data-view="tasks" onclick="switchView('tasks')">任务</button>
+            <button class="view-tab" data-view="reports" onclick="switchView('reports')">报告</button>
+            <button class="view-tab" data-view="insight" onclick="switchView('insight')">洞察</button>
+        </div>
+        <!-- 二级子 Tab -->
+        <div class="sub-tabs" id="subTabs">
+            <button class="sub-tab active" data-sub="day" onclick="switchSubView('day')">日</button>
+            <button class="sub-tab" data-sub="week" onclick="switchSubView('week')">周</button>
+            <button class="sub-tab" data-sub="month" onclick="switchSubView('month')">月</button>
+        </div>
+        <div class="sub-tabs hidden" id="reportSubTabs">
+            <button class="sub-tab active" data-sub="daily" onclick="switchReportView('daily')">日报</button>
+            <button class="sub-tab" data-sub="monthly" onclick="switchReportView('monthly')">月报</button>
+        </div>
+        <div class="view-date" id="viewDate"></div>
+
+        <!-- 任务列表 -->
+        <div class="task-area" id="taskArea"></div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div class="settings-overlay" id="settingsOverlay">
+        <div class="settings-panel">
+            <h3>模型配置</h3>
+            <div class="form-group">
+                <label>预设模型</label>
+                <select id="presetSelect" onchange="applyPreset()">
+                    <option value="aliyun">阿里云 Qwen</option>
+                    <option value="openai">OpenAI GPT</option>
+                    <option value="custom">自定义</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>API URL</label>
+                <input type="text" id="apiUrlInput" placeholder="https://..." />
+            </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="sk-..." />
+            </div>
+            <div class="form-group">
+                <label>模型名称</label>
+                <input type="text" id="modelInput" placeholder="qwen-plus" />
+            </div>
+            <hr class="section-divider" />
+            <h3 class="section-title">久坐提醒</h3>
+            <div class="form-group">
+                <label>提醒间隔（分钟，1-480）</label>
+                <input type="number" id="reminderInput" min="1" max="480" placeholder="45" />
+            </div>
+            <hr class="section-divider" />
+            <h3 class="section-title">VLM 屏幕感知</h3>
+            <div class="form-group">
+                <label>VLM 预设</label>
+                <select id="vlmPresetSelect" onchange="applyVlmPreset()">
+                    <option value="aliyun-vl">阿里云 Qwen-VL</option>
+                    <option value="openai-vision">OpenAI GPT-4o</option>
+                    <option value="doubao-vision">豆包 Vision</option>
+                    <option value="custom">自定义</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>VLM API URL</label>
+                <input type="text" id="vlmApiUrlInput" placeholder="https://..." />
+            </div>
+            <div class="form-group">
+                <label>VLM API Key</label>
+                <input type="password" id="vlmApiKeyInput" placeholder="sk-..." />
+            </div>
+            <div class="form-group">
+                <label>VLM 模型名称</label>
+                <input type="text" id="vlmModelInput" placeholder="qwen-vl-plus" />
+            </div>
+            <div class="form-group">
+                <div class="toggle-row">
+                    <label style="margin-bottom:0">自动截屏分析</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoCaptureToggle" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>自动分析间隔（秒，1-60）</label>
+                <input type="number" id="autoCaptureInput" min="1" max="60" placeholder="10" />
+            </div>
+            <hr class="section-divider" />
+            <h3 class="section-title">通用</h3>
+            <div class="form-group">
+                <div class="toggle-row">
+                    <label style="margin-bottom:0">开机自启动</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autostartToggle" />
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn-secondary" onclick="closeSettings()">取消</button>
+                <button class="btn-primary" onclick="saveSettings()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ======== Tauri ========
+        async function tauriInvoke(cmd, args) {
+            if (window.__TAURI__ && window.__TAURI__.core) {
+                return window.__TAURI__.core.invoke(cmd, args);
+            }
+            throw new Error('Tauri API 不可用');
+        }
+
+        // 开机自启动 API（tauri-plugin-autostart）
+        async function autostartEnable() {
+            return tauriInvoke('plugin:autostart|enable', {});
+        }
+        async function autostartDisable() {
+            return tauriInvoke('plugin:autostart|disable', {});
+        }
+        async function autostartIsEnabled() {
+            return tauriInvoke('plugin:autostart|is_enabled', {});
+        }
+
+        function setCatMessage(text) {
+            if (window.__TAURI__ && window.__TAURI__.event) {
+                window.__TAURI__.event.emit('cat-bubble', { text: text });
+            }
+        }
+
+        // ======== 状态 ========
+        var isLoading = false;
+        var currentView = 'tasks';       // 'tasks' | 'reports' | 'insight'
+        var currentSubView = 'day';      // 'day' | 'week' | 'month' (任务子视图)
+        var currentReportView = 'daily'; // 'daily' | 'monthly' (报告子视图)
+        var allTaskGroups = []; // 所有任务组，持久化
+        var allReports = [];   // 所有报告，持久化
+
+        // ======== 日期工具 ========
+        function todayStr() {
+            return new Date().toISOString().slice(0, 10);
+        }
+
+        function formatDate(dateStr) {
+            var d = new Date(dateStr);
+            return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+        }
+
+        function getWeekRange() {
+            var now = new Date();
+            var day = now.getDay() || 7; // 周日为7
+            var mon = new Date(now);
+            mon.setDate(now.getDate() - day + 1);
+            var sun = new Date(mon);
+            sun.setDate(mon.getDate() + 6);
+            return {
+                start: mon.toISOString().slice(0, 10),
+                end: sun.toISOString().slice(0, 10),
+                label: formatDate(mon.toISOString()) + ' - ' + formatDate(sun.toISOString())
+            };
+        }
+
+        function getMonthRange() {
+            var now = new Date();
+            var y = now.getFullYear();
+            var m = now.getMonth();
+            var start = new Date(y, m, 1).toISOString().slice(0, 10);
+            var end = new Date(y, m + 1, 0).toISOString().slice(0, 10);
+            return {
+                start: start,
+                end: end,
+                label: y + '年' + (m + 1) + '月'
+            };
+        }
+
+        function filterGroups(view) {
+            var today = todayStr();
+            if (view === 'day') {
+                return allTaskGroups.filter(function(g) { return g.createdAt === today; });
+            } else if (view === 'week') {
+                var r = getWeekRange();
+                return allTaskGroups.filter(function(g) { return g.createdAt >= r.start && g.createdAt <= r.end; });
+            } else {
+                var r = getMonthRange();
+                return allTaskGroups.filter(function(g) { return g.createdAt >= r.start && g.createdAt <= r.end; });
+            }
+        }
+
+        // ======== 持久化 ========
+        function loadTaskGroups() {
+            try {
+                var saved = localStorage.getItem('pet_task_groups');
+                if (saved) allTaskGroups = JSON.parse(saved);
+            } catch (e) {}
+        }
+
+        function saveTaskGroups() {
+            localStorage.setItem('pet_task_groups', JSON.stringify(allTaskGroups));
+        }
+
+        // ======== 报告持久化 ========
+        function loadReports() {
+            try {
+                var saved = localStorage.getItem('pet_reports');
+                if (saved) allReports = JSON.parse(saved);
+            } catch (e) {}
+        }
+
+        function saveReports() {
+            localStorage.setItem('pet_reports', JSON.stringify(allReports));
+        }
+
+        // ======== 输入统计持久化 ========
+        function loadDailyInputStats() {
+            try {
+                var saved = localStorage.getItem('pet_daily_input_stats');
+                if (saved) return JSON.parse(saved);
+            } catch (e) {}
+            return { date: todayStr(), mouseClicks: 0, keyStrokes: 0 };
+        }
+
+        function saveDailyInputStats(stats) {
+            localStorage.setItem('pet_daily_input_stats', JSON.stringify(stats));
+        }
+
+        function loadInputStatsArchive() {
+            try {
+                var saved = localStorage.getItem('pet_input_stats_archive');
+                if (saved) return JSON.parse(saved);
+            } catch (e) {}
+            return [];
+        }
+
+        function saveInputStatsArchive(archive) {
+            // 只保留最近 90 天
+            if (archive.length > 90) archive = archive.slice(-90);
+            localStorage.setItem('pet_input_stats_archive', JSON.stringify(archive));
+        }
+
+        // 每 30 秒拉取一次输入计数增量
+        function startInputCountPoller() {
+            setInterval(async function() {
+                try {
+                    var counts = await tauriInvoke('get_and_reset_input_counts', {});
+                    if (!counts || counts.length < 2) return;
+                    var mouseDelta = counts[0];
+                    var keysDelta = counts[1];
+                    if (mouseDelta === 0 && keysDelta === 0) return;
+
+                    var stats = loadDailyInputStats();
+                    var today = todayStr();
+
+                    // 日期变了，归档前一天
+                    if (stats.date !== today) {
+                        var archive = loadInputStatsArchive();
+                        archive.push({ date: stats.date, mouseClicks: stats.mouseClicks, keyStrokes: stats.keyStrokes });
+                        saveInputStatsArchive(archive);
+                        stats = { date: today, mouseClicks: 0, keyStrokes: 0 };
+                    }
+
+                    stats.mouseClicks += mouseDelta;
+                    stats.keyStrokes += keysDelta;
+                    saveDailyInputStats(stats);
+                } catch (e) {}
+            }, 30 * 1000);
+        }
+
+        // ======== 预设 & 配置 ========
+        var PRESETS = {
+            aliyun: { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+            openai: { apiUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }
+        };
+
+        var VLM_PRESETS = {
+            'aliyun-vl': { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-vl-plus' },
+            'openai-vision': { apiUrl: 'https://api.openai.com/v1', model: 'gpt-4o' },
+            'doubao-vision': { apiUrl: 'https://ark.cn-beijing.volces.com/api/v3', model: 'doubao-vision-pro-32k' }
+        };
+
+        function loadConfig() {
+            try {
+                var saved = localStorage.getItem('simple_llm_config');
+                if (saved) return JSON.parse(saved);
+            } catch (e) {}
+            return { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: '', model: 'qwen-plus' };
+        }
+
+        function loadVlmConfig() {
+            try {
+                var saved = localStorage.getItem('pet_vlm_config');
+                if (saved) return JSON.parse(saved);
+            } catch (e) {}
+            return { apiUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKey: '', model: 'qwen-vl-plus' };
+        }
+
+        function saveConfigToStorage(cfg) {
+            localStorage.setItem('simple_llm_config', JSON.stringify(cfg));
+        }
+
+        // ======== 设置面板 ========
+        async function openSettings() {
+            var cfg = loadConfig();
+            document.getElementById('apiUrlInput').value = cfg.apiUrl || '';
+            document.getElementById('apiKeyInput').value = cfg.apiKey || '';
+            document.getElementById('modelInput').value = cfg.model || '';
+
+            // 加载久坐提醒间隔
+            try {
+                var mins = await tauriInvoke('get_reminder_interval', {});
+                document.getElementById('reminderInput').value = mins;
+            } catch (e) {
+                var saved = localStorage.getItem('pet_reminder_minutes');
+                document.getElementById('reminderInput').value = saved || 45;
+            }
+
+            // 加载 VLM 配置
+            var vlmCfg = loadVlmConfig();
+            document.getElementById('vlmApiUrlInput').value = vlmCfg.apiUrl || '';
+            document.getElementById('vlmApiKeyInput').value = vlmCfg.apiKey || '';
+            document.getElementById('vlmModelInput').value = vlmCfg.model || '';
+
+            // 加载自动截屏设置
+            try {
+                var autoEnabled = await tauriInvoke('get_auto_capture_enabled', {});
+                document.getElementById('autoCaptureToggle').checked = autoEnabled;
+            } catch (e) {
+                document.getElementById('autoCaptureToggle').checked = false;
+            }
+            try {
+                var autoSecs = await tauriInvoke('get_auto_capture_interval', {});
+                document.getElementById('autoCaptureInput').value = autoSecs;
+            } catch (e) {
+                var savedAuto = localStorage.getItem('pet_auto_capture_secs');
+                document.getElementById('autoCaptureInput').value = savedAuto || 10;
+            }
+
+            // 加载开机自启动状态
+            try {
+                var isAutostart = await autostartIsEnabled();
+                document.getElementById('autostartToggle').checked = isAutostart;
+            } catch (e) {
+                document.getElementById('autostartToggle').checked = false;
+            }
+
+            document.getElementById('settingsOverlay').classList.add('active');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsOverlay').classList.remove('active');
+        }
+
+        function applyPreset() {
+            var sel = document.getElementById('presetSelect').value;
+            if (PRESETS[sel]) {
+                document.getElementById('apiUrlInput').value = PRESETS[sel].apiUrl;
+                document.getElementById('modelInput').value = PRESETS[sel].model;
+            }
+        }
+
+        function applyVlmPreset() {
+            var sel = document.getElementById('vlmPresetSelect').value;
+            if (VLM_PRESETS[sel]) {
+                document.getElementById('vlmApiUrlInput').value = VLM_PRESETS[sel].apiUrl;
+                document.getElementById('vlmModelInput').value = VLM_PRESETS[sel].model;
+            }
+        }
+
+        async function saveSettings() {
+            var cfg = {
+                apiUrl: document.getElementById('apiUrlInput').value.trim(),
+                apiKey: document.getElementById('apiKeyInput').value.trim(),
+                model: document.getElementById('modelInput').value.trim()
+            };
+            saveConfigToStorage(cfg);
+
+            // 保存久坐提醒间隔
+            var mins = parseInt(document.getElementById('reminderInput').value, 10);
+            if (!isNaN(mins) && mins >= 1 && mins <= 480) {
+                localStorage.setItem('pet_reminder_minutes', mins);
+                try {
+                    await tauriInvoke('set_reminder_interval', { minutes: mins });
+                } catch (e) {
+                    console.warn('设置提醒间隔失败:', e);
+                }
+            }
+
+            // 保存 VLM 配置
+            var vlmCfg = {
+                apiUrl: document.getElementById('vlmApiUrlInput').value.trim(),
+                apiKey: document.getElementById('vlmApiKeyInput').value.trim(),
+                model: document.getElementById('vlmModelInput').value.trim()
+            };
+            localStorage.setItem('pet_vlm_config', JSON.stringify(vlmCfg));
+
+            // 保存自动截屏设置
+            var autoEnabled = document.getElementById('autoCaptureToggle').checked;
+            try {
+                await tauriInvoke('set_auto_capture_enabled', { enabled: autoEnabled });
+            } catch (e) {}
+
+            var autoSecs = parseInt(document.getElementById('autoCaptureInput').value, 10);
+            if (!isNaN(autoSecs) && autoSecs >= 1 && autoSecs <= 60) {
+                localStorage.setItem('pet_auto_capture_secs', autoSecs);
+                try {
+                    await tauriInvoke('set_auto_capture_interval', { seconds: autoSecs });
+                } catch (e) {}
+            }
+
+            // 保存开机自启动设置
+            var wantAutostart = document.getElementById('autostartToggle').checked;
+            try {
+                var currentAutostart = await autostartIsEnabled();
+                if (wantAutostart && !currentAutostart) {
+                    await autostartEnable();
+                } else if (!wantAutostart && currentAutostart) {
+                    await autostartDisable();
+                }
+            } catch (e) {
+                console.warn('设置开机自启动失败:', e);
+            }
+
+            closeSettings();
+            setCatMessage('配置已保存~');
+        }
+
+        // ======== 视角切换 ========
+        function switchView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-tab').forEach(function(tab) {
+                tab.classList.toggle('active', tab.dataset.view === view);
+            });
+
+            // 控制子 Tab 可见性
+            document.getElementById('subTabs').classList.toggle('hidden', view !== 'tasks');
+            document.getElementById('reportSubTabs').classList.toggle('hidden', view !== 'reports');
+
+            updateViewDate();
+            renderAll();
+        }
+
+        function switchSubView(sub) {
+            currentSubView = sub;
+            document.querySelectorAll('#subTabs .sub-tab').forEach(function(tab) {
+                tab.classList.toggle('active', tab.dataset.sub === sub);
+            });
+            updateViewDate();
+            renderAll();
+        }
+
+        function switchReportView(sub) {
+            currentReportView = sub;
+            document.querySelectorAll('#reportSubTabs .sub-tab').forEach(function(tab) {
+                tab.classList.toggle('active', tab.dataset.sub === sub);
+            });
+            updateViewDate();
+            renderAll();
+        }
+
+        function updateViewDate() {
+            var el = document.getElementById('viewDate');
+            if (currentView === 'tasks') {
+                if (currentSubView === 'day') {
+                    var d = new Date();
+                    var weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+                    el.textContent = '今天 - ' + formatDate(todayStr()) + ' 周' + weekDays[d.getDay()];
+                } else if (currentSubView === 'week') {
+                    el.textContent = '本周 - ' + getWeekRange().label;
+                } else {
+                    el.textContent = getMonthRange().label;
+                }
+            } else if (currentView === 'reports') {
+                el.textContent = currentReportView === 'daily' ? '日报列表' : '月报列表';
+            } else {
+                el.textContent = '屏幕感知 - VLM 分析历史';
+            }
+        }
+
+        // ======== 提交任务 ========
+        async function submitTask() {
+            var input = document.getElementById('taskInput');
+            var text = input.value.trim();
+            if (!text || isLoading) return;
+
+            var config = loadConfig();
+            if (!config.apiKey) {
+                setCatMessage('还没配置 API Key 呢，点右边齿轮先配置一下~');
+                return;
+            }
+
+            input.value = '';
+            isLoading = true;
+            updateSubmitBtn();
+            setCatMessage('让我想想怎么拆分这个任务...');
+
+            try {
+                var result = await tauriInvoke('breakdown_task', {
+                    apiUrl: config.apiUrl,
+                    apiKey: config.apiKey,
+                    model: config.model,
+                    task: text
+                });
+
+                var group = {
+                    id: Date.now().toString(),
+                    task: result.task,
+                    totalXp: result.total_xp,
+                    energy: result.energy || 'mid',
+                    reward: result.reward || '',
+                    shield: result.shield || '',
+                    healthTip: result.health_tip,
+                    createdAt: todayStr(),
+                    subTasks: result.sub_tasks.map(function(t) {
+                        return { id: t.id, name: t.name, xp: t.xp, time: t.time, action: t.action || '', done: false };
+                    })
+                };
+
+                allTaskGroups.push(group);
+                saveTaskGroups();
+
+                // 切到日视角看新任务
+                switchView('tasks');
+                currentSubView = 'day';
+                switchSubView('day');
+                setCatMessage(result.health_tip || '任务已拆解，加油~');
+            } catch (error) {
+                setCatMessage('出了点问题: ' + (error.message || error));
+            } finally {
+                isLoading = false;
+                updateSubmitBtn();
+            }
+        }
+
+        function updateSubmitBtn() {
+            var btn = document.getElementById('submitBtn');
+            btn.disabled = isLoading;
+            btn.textContent = isLoading ? '思考中...' : '拆解';
+        }
+
+        function handleKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                submitTask();
+            }
+        }
+
+        // ======== 渲染 ========
+        function getDeadlineInfo(deadlineStr) {
+            if (!deadlineStr) return null;
+            var deadline = new Date(deadlineStr);
+            if (isNaN(deadline.getTime())) return null;
+
+            var now = new Date();
+            var diffMs = deadline.getTime() - now.getTime();
+            var diffH = diffMs / (1000 * 60 * 60);
+
+            var label = (deadline.getMonth() + 1) + '/' + deadline.getDate() + ' ' +
+                        String(deadline.getHours()).padStart(2, '0') + ':' + String(deadline.getMinutes()).padStart(2, '0');
+
+            if (diffMs < 0) {
+                return { label: label + ' 已过期', cls: 'deadline-passed' };
+            } else if (diffH < 4) {
+                return { label: label + ' 紧急', cls: 'deadline-urgent' };
+            } else if (diffH < 24) {
+                return { label: label + ' 临近', cls: 'deadline-warn' };
+            } else if (diffH < 48) {
+                return { label: label, cls: 'deadline-early' };
+            } else {
+                return { label: label, cls: 'deadline-safe' };
+            }
+        }
+
+        function renderAll() {
+            if (currentView === 'insight') {
+                renderInsightView();
+                return;
+            }
+            if (currentView === 'reports') {
+                renderReportsView();
+                return;
+            }
+
+            // 任务视图
+            var area = document.getElementById('taskArea');
+            var groups = filterGroups(currentSubView);
+
+            if (groups.length === 0) {
+                var viewNames = { day: '今天', week: '本周', month: '本月' };
+                area.innerHTML =
+                    '<div class="empty-state">' +
+                        '<div class="empty-icon">&#128203;</div>' +
+                        '<p>' + viewNames[currentSubView] + '还没有任务<br/>在上面输入你想做的事情</p>' +
+                    '</div>';
+                return;
+            }
+
+            var html = '';
+            groups.forEach(function(group) {
+                var doneCount = group.subTasks.filter(function(t) { return t.done; }).length;
+                var total = group.subTasks.length;
+                var pct = total > 0 ? Math.round(doneCount / total * 100) : 0;
+
+                // 能量等级标签
+                var energyMap = { low: ['低能耗', 'energy-low'], mid: ['中能耗', 'energy-mid'], high: ['高能耗', 'energy-high'] };
+                var energyInfo = energyMap[group.energy] || energyMap['mid'];
+
+                html += '<div class="task-group" data-gid="' + group.id + '">';
+
+                // 组标题
+                html += '<div class="group-header">';
+                html += '<div class="group-title">' + escapeHtml(group.task) + '</div>';
+                html += '<div class="group-meta">';
+                html += '<span class="energy-tag ' + energyInfo[1] + '">' + energyInfo[0] + '</span>';
+                if (group.source === 'vlm') {
+                    html += '<span class="source-tag">VLM</span>';
+                }
+                var dlInfo = getDeadlineInfo(group.deadline);
+                if (dlInfo) {
+                    html += '<span class="deadline-tag ' + dlInfo.cls + '">' + escapeHtml(dlInfo.label) + '</span>';
+                }
+                html += '<span class="group-xp">' + group.totalXp + ' XP</span>';
+                if (currentSubView !== 'day') {
+                    html += '<span class="group-date">' + formatDate(group.createdAt) + '</span>';
+                }
+                html += '<button class="group-delete" onclick="deleteGroup(\'' + group.id + '\')" title="删除">&times;</button>';
+                html += '</div></div>';
+
+                // 进度条
+                html += '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+
+                // 奖励卡片
+                if (group.reward) {
+                    html += '<div class="info-card reward-card"><span class="info-card-label">&#127881; 完成奖励:</span>' + escapeHtml(group.reward) + '</div>';
+                }
+
+                // 防分心护盾
+                if (group.shield) {
+                    html += '<div class="info-card shield-card"><span class="info-card-label">&#128737; 防分心:</span>' + escapeHtml(group.shield) + '</div>';
+                }
+
+                // 子任务
+                html += '<div class="task-list">';
+                group.subTasks.forEach(function(task, idx) {
+                    var cls = 'task-item' + (task.done ? ' done' : '');
+                    html += '<div class="' + cls + '" onclick="toggleTask(\'' + group.id + '\',' + idx + ')">';
+                    html += '<div class="task-check">' + (task.done ? '&#10003;' : '') + '</div>';
+                    html += '<div class="task-info">';
+                    html += '<div class="task-name">' + escapeHtml(task.name) + '</div>';
+                    if (task.action) {
+                        html += '<div class="task-action">' + escapeHtml(task.action) + '</div>';
+                    }
+                    html += '<div class="task-meta"><span>' + task.xp + ' XP</span><span>' + escapeHtml(task.time) + '</span></div>';
+                    html += '</div></div>';
+                });
+                html += '</div></div>';
+            });
+
+            area.innerHTML = html;
+        }
+
+        function toggleTask(groupId, taskIdx) {
+            var group = allTaskGroups.find(function(g) { return g.id === groupId; });
+            if (!group) return;
+
+            group.subTasks[taskIdx].done = !group.subTasks[taskIdx].done;
+            saveTaskGroups();
+            renderAll();
+
+            var doneCount = group.subTasks.filter(function(t) { return t.done; }).length;
+            var total = group.subTasks.length;
+
+            if (doneCount === total) {
+                setCatMessage('「' + group.task + '」全部完成啦！休息一下吧~');
+            } else if (doneCount > 0) {
+                setCatMessage('已完成 ' + doneCount + '/' + total + '，继续加油~');
+            }
+        }
+
+        function deleteGroup(groupId) {
+            allTaskGroups = allTaskGroups.filter(function(g) { return g.id !== groupId; });
+            saveTaskGroups();
+            renderAll();
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ======== VLM 截屏分析 ========
+        var vlmHistory = []; // 分析历史
+        var isCapturing = false;
+
+        function loadVlmHistory() {
+            try {
+                var saved = localStorage.getItem('pet_vlm_history');
+                if (saved) vlmHistory = JSON.parse(saved);
+            } catch (e) {}
+        }
+
+        function saveVlmHistory() {
+            // 只保留最近 50 条
+            if (vlmHistory.length > 50) vlmHistory = vlmHistory.slice(-50);
+            localStorage.setItem('pet_vlm_history', JSON.stringify(vlmHistory));
+        }
+
+        async function doCapture(prompt) {
+            var vlmCfg = loadVlmConfig();
+            if (!vlmCfg.apiKey) {
+                setCatMessage('还没配置 VLM API Key，点齿轮设置一下~');
+                return null;
+            }
+
+            var args = {
+                apiUrl: vlmCfg.apiUrl,
+                apiKey: vlmCfg.apiKey,
+                model: vlmCfg.model
+            };
+            if (prompt) args.prompt = prompt;
+
+            var result = await tauriInvoke('capture_and_analyze', args);
+            return result;
+        }
+
+        async function manualCapture() {
+            if (isCapturing) return;
+            isCapturing = true;
+            var btn = document.getElementById('captureBtn');
+            btn.disabled = true;
+            setCatMessage('猫猫正在观察你的屏幕...');
+
+            try {
+                var result = await doCapture(null);
+                if (result && result.success && result.data) {
+                    var entry = {
+                        id: Date.now().toString(),
+                        time: new Date().toLocaleString('zh-CN'),
+                        data: result.data
+                    };
+                    vlmHistory.push(entry);
+                    saveVlmHistory();
+
+                    var msg = result.data.suggestion || result.data.activity || '分析完成~';
+                    setCatMessage(msg);
+
+                    // 自动将 VLM 发现的待办添加到任务清单
+                    var added = autoAddVlmTodos(result.data);
+                    if (added > 0) {
+                        setTimeout(function() {
+                            setCatMessage('猫猫发现了 ' + added + ' 个新待办，已自动添加到任务清单~');
+                        }, 3000);
+                    }
+
+                    if (currentView === 'insight') renderAll();
+                } else {
+                    setCatMessage('分析失败: ' + (result ? result.error || '未知错误' : '无响应'));
+                }
+            } catch (e) {
+                setCatMessage('截屏分析出错: ' + (e.message || e));
+            } finally {
+                isCapturing = false;
+                btn.disabled = false;
+            }
+        }
+
+        function getMoodClass(mood) {
+            var map = { '工作': 'vlm-mood-work', '学习': 'vlm-mood-study', '娱乐': 'vlm-mood-fun', '休息': 'vlm-mood-rest' };
+            return map[mood] || 'vlm-mood-unknown';
+        }
+
+        function renderInsightView() {
+            var area = document.getElementById('taskArea');
+
+            if (vlmHistory.length === 0) {
+                area.innerHTML =
+                    '<div class="empty-state">' +
+                        '<div class="empty-icon">&#128065;</div>' +
+                        '<p>还没有屏幕分析记录<br/>点击顶部相机图标进行截屏分析</p>' +
+                    '</div>';
+                return;
+            }
+
+            var html = '';
+            html += '<div class="vlm-history-header">';
+            html += '<span>屏幕洞察记录</span>';
+            html += '<button class="vlm-add-task-btn" onclick="clearVlmHistory()" style="color:#ff6b6b;border-color:#ff6b6b;">清空</button>';
+            html += '</div>';
+
+            // 倒序显示（最新在前）
+            for (var i = vlmHistory.length - 1; i >= 0; i--) {
+                var entry = vlmHistory[i];
+                var d = entry.data;
+                html += '<div class="vlm-result-card">';
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+                html += '<span style="font-size:11px;color:#bbb;">' + escapeHtml(entry.time) + '</span>';
+                if (d.mood) {
+                    html += '<span class="vlm-mood-tag ' + getMoodClass(d.mood) + '">' + escapeHtml(d.mood) + '</span>';
+                }
+                html += '</div>';
+
+                if (d.activity) {
+                    html += '<div class="vlm-activity"><div class="vlm-label">当前活动</div>' + escapeHtml(d.activity) + '</div>';
+                }
+                if (d.summary) {
+                    html += '<div class="vlm-summary"><div class="vlm-label">关键信息</div>' + escapeHtml(d.summary) + '</div>';
+                }
+                if (d.suggestion) {
+                    html += '<div class="vlm-suggestion">' + escapeHtml(d.suggestion) + '</div>';
+                }
+                if (d.todos && d.todos.length > 0) {
+                    html += '<div class="vlm-todos"><div class="vlm-label">发现的待办</div>';
+                    d.todos.forEach(function(todo, ti) {
+                        var todoText = (typeof todo === 'string') ? todo : (todo.text || '');
+                        var todoDeadline = (typeof todo === 'object' && todo.deadline) ? todo.deadline : null;
+                        html += '<div class="vlm-todo-item">';
+                        html += '<span>' + escapeHtml(todoText);
+                        if (todoDeadline) {
+                            var dlInfo = getDeadlineInfo(todoDeadline);
+                            if (dlInfo) {
+                                html += ' <span class="deadline-tag ' + dlInfo.cls + '" style="font-size:10px;">' + escapeHtml(dlInfo.label) + '</span>';
+                            }
+                        }
+                        html += '</span>';
+                        html += '<button class="vlm-add-task-btn" onclick="addVlmTodo(' + i + ',' + ti + ')">+任务</button>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+            }
+
+            area.innerHTML = html;
+        }
+
+        function addVlmTodo(historyIdx, todoIdx) {
+            var entry = vlmHistory[historyIdx];
+            if (!entry || !entry.data || !entry.data.todos) return;
+            var todo = entry.data.todos[todoIdx];
+            if (!todo) return;
+
+            // 兼容旧格式（字符串）和新格式（对象）
+            var todoText = (typeof todo === 'string') ? todo : (todo.text || '');
+            if (!todoText) return;
+
+            // 填入输入框并切换到日视角，方便用户拆解
+            document.getElementById('taskInput').value = todoText;
+            switchView('tasks');
+            switchSubView('day');
+            setCatMessage('已填入待办，点「拆解」让猫猫帮你规划~');
+        }
+
+        function clearVlmHistory() {
+            vlmHistory = [];
+            saveVlmHistory();
+            if (currentView === 'insight') renderAll();
+        }
+
+        // ======== VLM 自动添加任务到清单 ========
+        function autoAddVlmTodos(vlmData) {
+            if (!vlmData || !vlmData.todos || vlmData.todos.length === 0) return 0;
+
+            var addedCount = 0;
+            vlmData.todos.forEach(function(todo) {
+                // 兼容旧格式（字符串）和新格式（对象）
+                var todoText = (typeof todo === 'string') ? todo : (todo.text || '');
+                var todoDeadline = (typeof todo === 'object' && todo.deadline) ? todo.deadline : null;
+
+                if (!todoText.trim()) return;
+
+                // 去重：检查已有任务组中是否已有相同任务
+                var normalizedText = todoText.trim().toLowerCase();
+                var exists = allTaskGroups.some(function(g) {
+                    return g.task.trim().toLowerCase() === normalizedText;
+                });
+                if (exists) return;
+
+                // 创建简单任务组（不经过 LLM 拆解）
+                var group = {
+                    id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 4),
+                    task: todoText.trim(),
+                    totalXp: 10,
+                    energy: 'low',
+                    reward: '',
+                    shield: '',
+                    healthTip: '',
+                    createdAt: todayStr(),
+                    deadline: todoDeadline,
+                    source: 'vlm',
+                    subTasks: [{
+                        id: 1,
+                        name: todoText.trim(),
+                        xp: 10,
+                        time: '待定',
+                        action: '',
+                        done: false
+                    }]
+                };
+
+                allTaskGroups.push(group);
+                addedCount++;
+            });
+
+            if (addedCount > 0) {
+                saveTaskGroups();
+                renderAll();
+            }
+            return addedCount;
+        }
+
+        // ======== 报告数据收集与生成 ========
+        var isGeneratingReport = false;
+
+        function collectDailyStats(dateStr) {
+            // 任务统计
+            var dayGroups = allTaskGroups.filter(function(g) { return g.createdAt === dateStr; });
+            var totalTasks = dayGroups.length;
+            var tasksCompleted = 0;
+            var xpEarned = 0;
+            dayGroups.forEach(function(g) {
+                var allDone = g.subTasks.every(function(t) { return t.done; });
+                if (allDone) tasksCompleted++;
+                g.subTasks.forEach(function(t) { if (t.done) xpEarned += (t.xp || 0); });
+            });
+
+            // VLM 心情分布
+            var moodDist = {};
+            var vlmSummaries = [];
+            vlmHistory.forEach(function(entry) {
+                // 判断 VLM 记录是否属于指定日期
+                var entryDate = '';
+                try {
+                    var parsed = new Date(entry.time.replace(/\//g, '-'));
+                    if (!isNaN(parsed.getTime())) entryDate = parsed.toISOString().slice(0, 10);
+                } catch (e) {}
+                if (entryDate !== dateStr) return;
+
+                var d = entry.data;
+                if (d.mood) {
+                    moodDist[d.mood] = (moodDist[d.mood] || 0) + 1;
+                }
+                vlmSummaries.push({
+                    time: entry.time,
+                    activity: d.activity || '',
+                    mood: d.mood || ''
+                });
+            });
+
+            // 输入统计
+            var inputStats = loadDailyInputStats();
+            var mouseClicks = 0, keyStrokes = 0;
+            if (inputStats.date === dateStr) {
+                mouseClicks = inputStats.mouseClicks;
+                keyStrokes = inputStats.keyStrokes;
+            } else {
+                // 从归档中查找
+                var archive = loadInputStatsArchive();
+                var found = archive.find(function(a) { return a.date === dateStr; });
+                if (found) {
+                    mouseClicks = found.mouseClicks;
+                    keyStrokes = found.keyStrokes;
+                }
+            }
+
+            return {
+                mouseClicks: mouseClicks,
+                keyStrokes: keyStrokes,
+                tasksCompleted: tasksCompleted,
+                totalTasks: totalTasks,
+                xpEarned: xpEarned,
+                moodDistribution: moodDist,
+                vlmSummaries: vlmSummaries
+            };
+        }
+
+        async function generateDailyReport(dateStr) {
+            if (isGeneratingReport) return;
+            isGeneratingReport = true;
+            setCatMessage('猫猫正在整理今天的记录，生成日报中...');
+
+            try {
+                var stats = collectDailyStats(dateStr);
+
+                // 构建 LLM prompt
+                var vlmText = stats.vlmSummaries.map(function(s) {
+                    return s.time + ': ' + s.activity + ' (' + s.mood + ')';
+                }).join('\n') || '无 VLM 分析记录';
+
+                var moodText = Object.keys(stats.moodDistribution).map(function(k) {
+                    return k + ': ' + stats.moodDistribution[k] + '次';
+                }).join(', ') || '无记录';
+
+                var promptText = '你是一只关心主人的桌面猫猫。请根据以下今天（' + dateStr + '）的电脑使用记录，用 200 字以内写一段温暖有趣的日总结：\n' +
+                    '- 鼠标点击：' + stats.mouseClicks + ' 次，键盘敲击：' + stats.keyStrokes + ' 次\n' +
+                    '- 完成任务：' + stats.tasksCompleted + '/' + stats.totalTasks + '，获得 ' + stats.xpEarned + ' XP\n' +
+                    '- 活动记录：\n' + vlmText + '\n' +
+                    '- 心情分布：' + moodText + '\n' +
+                    '请用第三人称描述主人的一天，语气温暖、有趣，适当加入鼓励。只返回总结文本，不要返回JSON。';
+
+                var narrative = '';
+                var config = loadConfig();
+                if (config.apiKey) {
+                    try {
+                        narrative = await tauriInvoke('call_llm', {
+                            apiUrl: config.apiUrl,
+                            apiKey: config.apiKey,
+                            model: config.model,
+                            messages: [
+                                { role: 'system', content: '你是一个温暖有趣的桌面猫猫助手，擅长写工作日报总结。' },
+                                { role: 'user', content: promptText }
+                            ]
+                        });
+                    } catch (e) {
+                        narrative = '（LLM 总结生成失败: ' + (e.message || e) + '）';
+                    }
+                } else {
+                    narrative = '（未配置 LLM API Key，无法生成叙述总结）';
+                }
+
+                var report = {
+                    id: Date.now().toString(),
+                    type: 'daily',
+                    date: dateStr,
+                    mouseClicks: stats.mouseClicks,
+                    keyStrokes: stats.keyStrokes,
+                    tasksCompleted: stats.tasksCompleted,
+                    totalTasks: stats.totalTasks,
+                    xpEarned: stats.xpEarned,
+                    moodDistribution: stats.moodDistribution,
+                    vlmSummaries: stats.vlmSummaries,
+                    llmNarrative: narrative,
+                    generatedAt: new Date().toISOString()
+                };
+
+                allReports.push(report);
+                saveReports();
+                renderAll();
+                setCatMessage('日报已生成~');
+            } catch (e) {
+                setCatMessage('生成日报失败: ' + (e.message || e));
+            } finally {
+                isGeneratingReport = false;
+            }
+        }
+
+        function collectMonthlyStats(monthStr) {
+            // monthStr 格式 "2026-03"
+            var totalMouse = 0, totalKeys = 0, totalCompleted = 0, totalTasks = 0, totalXp = 0;
+            var moodDist = {};
+            var dailyBreakdown = [];
+
+            // 从已有日报聚合
+            var dailyReports = allReports.filter(function(r) {
+                return r.type === 'daily' && r.date.startsWith(monthStr);
+            });
+
+            dailyReports.forEach(function(r) {
+                totalMouse += r.mouseClicks || 0;
+                totalKeys += r.keyStrokes || 0;
+                totalCompleted += r.tasksCompleted || 0;
+                totalTasks += r.totalTasks || 0;
+                totalXp += r.xpEarned || 0;
+                if (r.moodDistribution) {
+                    Object.keys(r.moodDistribution).forEach(function(k) {
+                        moodDist[k] = (moodDist[k] || 0) + r.moodDistribution[k];
+                    });
+                }
+                dailyBreakdown.push({
+                    date: r.date,
+                    mouseClicks: r.mouseClicks || 0,
+                    keyStrokes: r.keyStrokes || 0,
+                    tasksCompleted: r.tasksCompleted || 0,
+                    xpEarned: r.xpEarned || 0
+                });
+            });
+
+            // 补充没有日报但有原始数据的天
+            var archive = loadInputStatsArchive();
+            var inputStats = loadDailyInputStats();
+            var coveredDates = {};
+            dailyReports.forEach(function(r) { coveredDates[r.date] = true; });
+
+            archive.forEach(function(a) {
+                if (!a.date.startsWith(monthStr) || coveredDates[a.date]) return;
+                totalMouse += a.mouseClicks || 0;
+                totalKeys += a.keyStrokes || 0;
+            });
+            if (inputStats.date.startsWith(monthStr) && !coveredDates[inputStats.date]) {
+                totalMouse += inputStats.mouseClicks || 0;
+                totalKeys += inputStats.keyStrokes || 0;
+            }
+
+            return {
+                totalMouseClicks: totalMouse,
+                totalKeyStrokes: totalKeys,
+                totalTasksCompleted: totalCompleted,
+                totalTasks: totalTasks,
+                totalXpEarned: totalXp,
+                moodDistribution: moodDist,
+                dailyBreakdown: dailyBreakdown
+            };
+        }
+
+        async function generateMonthlyReport(monthStr) {
+            if (isGeneratingReport) return;
+            isGeneratingReport = true;
+            setCatMessage('猫猫正在整理本月的数据，生成月报中...');
+
+            try {
+                var stats = collectMonthlyStats(monthStr);
+
+                var moodText = Object.keys(stats.moodDistribution).map(function(k) {
+                    return k + ': ' + stats.moodDistribution[k] + '次';
+                }).join(', ') || '无记录';
+
+                var promptText = '你是一只关心主人的桌面猫猫。请根据以下本月（' + monthStr + '）的电脑使用统计，用 300 字以内写一段月度总结：\n' +
+                    '- 总鼠标点击：' + stats.totalMouseClicks + ' 次，总键盘敲击：' + stats.totalKeyStrokes + ' 次\n' +
+                    '- 完成任务：' + stats.totalTasksCompleted + '/' + stats.totalTasks + '，获得 ' + stats.totalXpEarned + ' XP\n' +
+                    '- 心情分布：' + moodText + '\n' +
+                    '- 有 ' + stats.dailyBreakdown.length + ' 天的详细日报记录\n' +
+                    '请给出月度评价和下月建议，语气温暖、鼓励。只返回总结文本。';
+
+                var narrative = '';
+                var config = loadConfig();
+                if (config.apiKey) {
+                    try {
+                        narrative = await tauriInvoke('call_llm', {
+                            apiUrl: config.apiUrl,
+                            apiKey: config.apiKey,
+                            model: config.model,
+                            messages: [
+                                { role: 'system', content: '你是一个温暖有趣的桌面猫猫助手，擅长写月度工作总结。' },
+                                { role: 'user', content: promptText }
+                            ]
+                        });
+                    } catch (e) {
+                        narrative = '（LLM 总结生成失败: ' + (e.message || e) + '）';
+                    }
+                } else {
+                    narrative = '（未配置 LLM API Key，无法生成叙述总结）';
+                }
+
+                var report = {
+                    id: Date.now().toString(),
+                    type: 'monthly',
+                    month: monthStr,
+                    totalMouseClicks: stats.totalMouseClicks,
+                    totalKeyStrokes: stats.totalKeyStrokes,
+                    totalTasksCompleted: stats.totalTasksCompleted,
+                    totalTasks: stats.totalTasks,
+                    totalXpEarned: stats.totalXpEarned,
+                    moodDistribution: stats.moodDistribution,
+                    dailyBreakdown: stats.dailyBreakdown,
+                    llmNarrative: narrative,
+                    generatedAt: new Date().toISOString()
+                };
+
+                allReports.push(report);
+                saveReports();
+                renderAll();
+                setCatMessage('月报已生成~');
+            } catch (e) {
+                setCatMessage('生成月报失败: ' + (e.message || e));
+            } finally {
+                isGeneratingReport = false;
+            }
+        }
+
+        function deleteReport(reportId) {
+            allReports = allReports.filter(function(r) { return r.id !== reportId; });
+            saveReports();
+            renderAll();
+        }
+
+        function buildMoodBar(moodDist) {
+            var total = 0;
+            var moodMap = { '工作': 'mood-seg-work', '学习': 'mood-seg-study', '娱乐': 'mood-seg-fun', '休息': 'mood-seg-rest' };
+            Object.keys(moodDist).forEach(function(k) { total += moodDist[k]; });
+            if (total === 0) return '';
+
+            var barHtml = '<div class="report-mood-bar">';
+            Object.keys(moodMap).forEach(function(k) {
+                var count = moodDist[k] || 0;
+                if (count > 0) {
+                    var pct = (count / total * 100).toFixed(1);
+                    barHtml += '<div class="report-mood-seg ' + moodMap[k] + '" style="width:' + pct + '%" title="' + k + ' ' + count + '次"></div>';
+                }
+            });
+            barHtml += '</div>';
+
+            barHtml += '<div class="report-mood-legend">';
+            Object.keys(moodMap).forEach(function(k) {
+                var count = moodDist[k] || 0;
+                if (count > 0) {
+                    var cls = moodMap[k].replace('mood-seg-', 'legend-');
+                    barHtml += '<span class="' + cls + '">' + k + ' ' + count + '</span>';
+                }
+            });
+            barHtml += '</div>';
+            return barHtml;
+        }
+
+        function renderReportsView() {
+            var area = document.getElementById('taskArea');
+            var isDaily = currentReportView === 'daily';
+
+            // 过滤报告
+            var reports = allReports.filter(function(r) {
+                return isDaily ? r.type === 'daily' : r.type === 'monthly';
+            }).sort(function(a, b) {
+                return (b.generatedAt || '').localeCompare(a.generatedAt || '');
+            });
+
+            var html = '';
+
+            // 生成工具栏
+            html += '<div class="report-toolbar">';
+            if (isDaily) {
+                html += '<input type="date" id="reportDatePicker" value="' + todayStr() + '" />';
+                html += '<button class="report-gen-btn" id="reportGenBtn" onclick="handleGenerateDaily()">生成日报</button>';
+            } else {
+                var now = new Date();
+                var monthVal = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+                html += '<input type="month" id="reportMonthPicker" value="' + monthVal + '" />';
+                html += '<button class="report-gen-btn" id="reportGenBtn" onclick="handleGenerateMonthly()">生成月报</button>';
+            }
+            html += '</div>';
+
+            if (reports.length === 0) {
+                html += '<div class="empty-state">';
+                html += '<div class="empty-icon">&#128196;</div>';
+                html += '<p>还没有' + (isDaily ? '日报' : '月报') + '<br/>点击上方按钮生成</p>';
+                html += '</div>';
+                area.innerHTML = html;
+                return;
+            }
+
+            reports.forEach(function(r) {
+                html += '<div class="report-card">';
+
+                // 标题
+                var title = r.type === 'daily' ? (r.date + ' 日报') : (r.month + ' 月报');
+                var genTime = r.generatedAt ? new Date(r.generatedAt).toLocaleString('zh-CN') : '';
+                html += '<div class="report-card-title"><span>' + escapeHtml(title) + '</span><span class="report-card-time">生成于 ' + genTime + '</span></div>';
+
+                // 统计数据
+                html += '<div class="report-stats">';
+                if (r.type === 'daily') {
+                    html += '<div class="report-stat">鼠标点击 <b>' + (r.mouseClicks || 0) + '</b></div>';
+                    html += '<div class="report-stat">键盘敲击 <b>' + (r.keyStrokes || 0) + '</b></div>';
+                    html += '<div class="report-stat">完成任务 <b>' + (r.tasksCompleted || 0) + '/' + (r.totalTasks || 0) + '</b></div>';
+                    html += '<div class="report-stat">获得 XP <b>' + (r.xpEarned || 0) + '</b></div>';
+                } else {
+                    html += '<div class="report-stat">总点击 <b>' + (r.totalMouseClicks || 0) + '</b></div>';
+                    html += '<div class="report-stat">总敲击 <b>' + (r.totalKeyStrokes || 0) + '</b></div>';
+                    html += '<div class="report-stat">完成任务 <b>' + (r.totalTasksCompleted || 0) + '/' + (r.totalTasks || 0) + '</b></div>';
+                    html += '<div class="report-stat">总 XP <b>' + (r.totalXpEarned || 0) + '</b></div>';
+                }
+                html += '</div>';
+
+                // 心情分布条
+                var dist = r.moodDistribution || {};
+                var moodBarHtml = buildMoodBar(dist);
+                if (moodBarHtml) html += moodBarHtml;
+
+                // LLM 叙述
+                if (r.llmNarrative) {
+                    html += '<div class="report-narrative">' + escapeHtml(r.llmNarrative) + '</div>';
+                }
+
+                // 操作按钮
+                html += '<div class="report-actions">';
+                html += '<button class="report-export-btn" onclick="exportReport(\'' + r.id + '\',\'pdf\')">导出 PDF</button>';
+                html += '<button class="report-export-btn" onclick="exportReport(\'' + r.id + '\',\'word\')">导出 Word</button>';
+                html += '<button class="report-delete-btn" onclick="deleteReport(\'' + r.id + '\')">删除</button>';
+                html += '</div>';
+
+                html += '</div>';
+            });
+
+            area.innerHTML = html;
+        }
+
+        async function handleGenerateDaily() {
+            var dateInput = document.getElementById('reportDatePicker');
+            var dateStr = dateInput ? dateInput.value : todayStr();
+            if (!dateStr) dateStr = todayStr();
+            await generateDailyReport(dateStr);
+        }
+
+        async function handleGenerateMonthly() {
+            var monthInput = document.getElementById('reportMonthPicker');
+            var monthStr = monthInput ? monthInput.value : '';
+            if (!monthStr) {
+                var now = new Date();
+                monthStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            }
+            await generateMonthlyReport(monthStr);
+        }
+
+        // 导出占位（后续在 report.rs 完成后对接）
+        async function exportReport(reportId, format) {
+            var report = allReports.find(function(r) { return r.id === reportId; });
+            if (!report) return;
+            setCatMessage('正在导出 ' + format.toUpperCase() + '...');
+            try {
+                // 调用 Tauri dialog 获取保存路径
+                var ext = format === 'pdf' ? 'pdf' : 'docx';
+                var title = report.type === 'daily' ? (report.date + '日报') : (report.month + '月报');
+                var defaultName = title + '.' + ext;
+
+                var savePath = await tauriInvoke('plugin:dialog|save', {
+                    title: '导出报告',
+                    filters: [{ name: format.toUpperCase(), extensions: [ext] }],
+                    defaultPath: defaultName
+                });
+                if (!savePath) return;
+
+                var cmd = format === 'pdf' ? 'export_report_pdf' : 'export_report_word';
+                await tauriInvoke(cmd, { reportJson: JSON.stringify(report), savePath: savePath });
+                setCatMessage('报告已导出~');
+            } catch (e) {
+                setCatMessage('导出失败: ' + (e.message || e));
+            }
+        }
+
+        // ======== 截止日期提醒系统 ========
+        function loadDeadlineReminders() {
+            try {
+                var saved = localStorage.getItem('pet_deadline_reminders');
+                if (saved) return JSON.parse(saved);
+            } catch (e) {}
+            return {};
+        }
+
+        function saveDeadlineReminders(reminders) {
+            localStorage.setItem('pet_deadline_reminders', JSON.stringify(reminders));
+        }
+
+        /**
+         * 解析任务时间字段，估算工作时长（分钟）
+         * 如 "5分钟" → 5, "1小时" → 60, "待定" → 30（默认）
+         */
+        function parseTaskMinutes(timeStr) {
+            if (!timeStr || timeStr === '待定') return 30;
+            var hMatch = timeStr.match(/(\d+)\s*小时/);
+            var mMatch = timeStr.match(/(\d+)\s*分/);
+            var total = 0;
+            if (hMatch) total += parseInt(hMatch[1], 10) * 60;
+            if (mMatch) total += parseInt(mMatch[1], 10);
+            return total > 0 ? total : 30;
+        }
+
+        /**
+         * 计算任务组剩余工作时间（分钟），只计未完成子任务
+         */
+        function estimateRemainingMinutes(group) {
+            var total = 0;
+            group.subTasks.forEach(function(t) {
+                if (!t.done) {
+                    total += parseTaskMinutes(t.time);
+                }
+            });
+            // 安全系数 1.5x
+            return Math.ceil(total * 1.5);
+        }
+
+        /**
+         * 截止日期提醒定时器（每60秒检查一次）
+         * 三级提醒：
+         *   - early:  距截止 > 48h，提前提醒开始规划
+         *   - warn:   距截止 24h~48h，提醒抓紧时间
+         *   - urgent: 剩余时间 ≤ 预估工作时间，紧急提醒
+         * 每个任务每个级别 4 小时内不重复提醒
+         */
+        function startDeadlineChecker() {
+            var COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 小时冷却
+
+            setInterval(function() {
+                var reminders = loadDeadlineReminders();
+                var now = new Date();
+                var nowMs = now.getTime();
+                var changed = false;
+
+                allTaskGroups.forEach(function(group) {
+                    // 跳过没有截止日期的任务
+                    if (!group.deadline) return;
+                    // 跳过已全部完成的任务
+                    var allDone = group.subTasks.every(function(t) { return t.done; });
+                    if (allDone) return;
+
+                    var deadline = new Date(group.deadline);
+                    if (isNaN(deadline.getTime())) return;
+
+                    var diffMs = deadline.getTime() - nowMs;
+                    var diffH = diffMs / (1000 * 60 * 60);
+
+                    // 已过期
+                    if (diffMs < 0) {
+                        var key = group.id + '_overdue';
+                        var lastTime = reminders[key] || 0;
+                        if (nowMs - lastTime > COOLDOWN_MS) {
+                            setCatMessage('「' + group.task + '」已经超过截止时间了！赶紧处理一下吧~');
+                            reminders[key] = nowMs;
+                            changed = true;
+                        }
+                        return;
+                    }
+
+                    // 计算预估剩余工作时间
+                    var workMins = estimateRemainingMinutes(group);
+                    var workMs = workMins * 60 * 1000;
+
+                    // urgent: 剩余时间 ≤ 预估工作时间（含 1.5x 安全系数）
+                    if (diffMs <= workMs) {
+                        var key = group.id + '_urgent';
+                        var lastTime = reminders[key] || 0;
+                        if (nowMs - lastTime > COOLDOWN_MS) {
+                            setCatMessage('紧急！「' + group.task + '」预计需要 ' + workMins + ' 分钟完成，距截止仅剩 ' + Math.round(diffH) + ' 小时，赶紧开始吧！');
+                            reminders[key] = nowMs;
+                            changed = true;
+                        }
+                        return;
+                    }
+
+                    // warn: 24h ~ 48h
+                    if (diffH <= 24) {
+                        var key = group.id + '_warn';
+                        var lastTime = reminders[key] || 0;
+                        if (nowMs - lastTime > COOLDOWN_MS) {
+                            setCatMessage('「' + group.task + '」距截止不到 24 小时了，抓紧时间哦~');
+                            reminders[key] = nowMs;
+                            changed = true;
+                        }
+                        return;
+                    }
+
+                    // early: 48h+，首次提醒规划
+                    if (diffH <= 48) {
+                        var key = group.id + '_early';
+                        var lastTime = reminders[key] || 0;
+                        if (nowMs - lastTime > COOLDOWN_MS) {
+                            var dlLabel = (deadline.getMonth() + 1) + '/' + deadline.getDate();
+                            setCatMessage('「' + group.task + '」截止日期是 ' + dlLabel + '，可以开始规划啦~');
+                            reminders[key] = nowMs;
+                            changed = true;
+                        }
+                    }
+                });
+
+                if (changed) {
+                    // 清理过期的提醒记录（超过 7 天的）
+                    var cleanupThreshold = nowMs - 7 * 24 * 60 * 60 * 1000;
+                    Object.keys(reminders).forEach(function(k) {
+                        if (reminders[k] < cleanupThreshold) delete reminders[k];
+                    });
+                    saveDeadlineReminders(reminders);
+                }
+            }, 60 * 1000); // 每 60 秒检查一次
+        }
+
+        // ======== 初始化 ========
+        loadTaskGroups();
+        loadVlmHistory();
+        loadReports();
+        updateViewDate();
+        renderAll();
+
+        // 启动截止日期提醒定时器
+        startDeadlineChecker();
+
+        // 启动输入计数轮询
+        startInputCountPoller();
+
+        // 恢复久坐提醒间隔到后端
+        (async function restoreReminder() {
+            var saved = localStorage.getItem('pet_reminder_minutes');
+            if (saved) {
+                var mins = parseInt(saved, 10);
+                if (!isNaN(mins) && mins >= 1 && mins <= 480) {
+                    try {
+                        await tauriInvoke('set_reminder_interval', { minutes: mins });
+                    } catch (e) {}
+                }
+            }
+        })();
+
+        // 恢复自动截屏设置到后端
+        (async function restoreAutoCapture() {
+            var savedSecs = localStorage.getItem('pet_auto_capture_secs');
+            if (savedSecs) {
+                var s = parseInt(savedSecs, 10);
+                if (!isNaN(s) && s >= 1 && s <= 60) {
+                    try { await tauriInvoke('set_auto_capture_interval', { seconds: s }); } catch (e) {}
+                }
+            }
+        })();
+
+        // 监听后端自动截屏触发事件
+        (function listenAutoTrigger() {
+            if (window.__TAURI__ && window.__TAURI__.event) {
+                window.__TAURI__.event.listen('vlm-auto-trigger', async function() {
+                    if (isCapturing) return;
+                    isCapturing = true;
+                    try {
+                        var result = await doCapture('请分析我的屏幕截图，总结我当前的工作状态。');
+                        if (result && result.success && result.data) {
+                            var entry = {
+                                id: Date.now().toString(),
+                                time: new Date().toLocaleString('zh-CN'),
+                                data: result.data
+                            };
+                            vlmHistory.push(entry);
+                            saveVlmHistory();
+
+                            // 通过气泡简要告知用户
+                            var brief = result.data.suggestion || ('当前状态: ' + (result.data.mood || ''));
+                            setCatMessage(brief);
+
+                            // 自动将 VLM 发现的待办添加到任务清单
+                            var added = autoAddVlmTodos(result.data);
+                            if (added > 0) {
+                                setTimeout(function() {
+                                    setCatMessage('猫猫发现了 ' + added + ' 个新待办，已自动添加到任务清单~');
+                                }, 3000);
+                            }
+
+                            if (currentView === 'insight') renderAll();
+                        }
+                    } catch (e) {
+                        console.warn('自动截屏分析失败:', e);
+                    } finally {
+                        isCapturing = false;
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
