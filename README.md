@@ -152,7 +152,7 @@ npm run tauri build
 - 点击 **导出 PDF** 或 **导出 Word** 保存
 
 ### 致谢
-- 本项目为为参加AI Hackathon Tour而开发
+- 本项目是为参加AI Hackathon Tour而开发
 - 感谢主办方的组织，qoder，minimax以及魔搭社区提供的支持
 - 感谢Bongocat和MineContext项目
 
